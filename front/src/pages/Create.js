@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Row, Col, Input, Form, Button, Tooltip, message } from 'antd';
-import styled from 'styled-components';
-import ProfileBackground from '../components/banner/ProfileBackground';
-import { CheckOutlined, PlusSquareFilled } from '@ant-design/icons';
-import { create } from 'ipfs-http-client';
-import contractAddr from '../data/create/contractAddr';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Row, Col, Input, Form, Button, Tooltip, message } from "antd";
+import styled from "styled-components";
+import ProfileBackground from "../components/banner/ProfileBackground";
+import { CheckOutlined, PlusSquareFilled } from "@ant-design/icons";
+import { create } from "ipfs-http-client";
+import contractAddr from "../data/create/contractAddr";
+import axios from "axios";
 
 const HeadSection = styled.h1`
   height: 15vh;
@@ -71,6 +72,7 @@ export default function Create({ userAddress, contract, web3 }) {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const navigate = useNavigate();
+  const url = "http://localhost:4999/nft/savenft";
 
   const handleImageUpload = (e) => {
     if (image) URL.revokeObjectURL(image);
@@ -86,9 +88,9 @@ export default function Create({ userAddress, contract, web3 }) {
     if (values.name && image) {
       // ipfs 설정
       const ipfs = create({
-        host: 'ipfs.infura.io',
+        host: "ipfs.infura.io",
         port: 5001,
-        protocol: 'https',
+        protocol: "https",
       });
       // img파일 읽어서 ipfs통해 CID 받아오는 과정
       const reader = new window.FileReader();
@@ -99,10 +101,10 @@ export default function Create({ userAddress, contract, web3 }) {
             const metaUri = `https://ipfs.io/ipfs/${res}`;
             return metaUri;
           })
-          .then((tokenUri) => {
+          .then((metaUri) => {
             // mint함수 부르기
-            if (tokenUri) {
-              sendTransaction(tokenUri);
+            if (metaUri) {
+              sendTransaction(metaUri);
             }
           })
           .catch((err) => alert(err));
@@ -117,7 +119,7 @@ export default function Create({ userAddress, contract, web3 }) {
             console.log(`hash: ${uploadResult.path}`);
             // metadata생성하기
             const metadata = {
-              description: values.description ?? '',
+              description: values.description ?? "",
               image: `https://ipfs.io/ipfs/${uploadResult.path}`,
               name: values.name,
             };
@@ -136,7 +138,7 @@ export default function Create({ userAddress, contract, web3 }) {
 
       // NFT 컨트랙트 실행
       const sendTransaction = async (tokenUri) => {
-        const nonce = await web3.eth.getTransactionCount(userAddress, 'latest');
+        const nonce = await web3.eth.getTransactionCount(userAddress, "latest");
         const tx = {
           from: userAddress,
           to: contractAddr,
@@ -154,24 +156,62 @@ export default function Create({ userAddress, contract, web3 }) {
           })
           .then((res) => {
             console.log(`tokenId: ${res}`);
+            axios
+              .post(
+                url,
+                {
+                  tokenId: res,
+                  tokenURI: tokenUri,
+                  userAddress: userAddress,
+                },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  withCredentials: true,
+                }
+              )
+              .then((res) => {
+                console.log(res);
+              })
+              .catch((err) => {
+                console.log(`err: ${err}`);
+                // 만약 NFT생성은 완료 되었는데 서버전송에서 오류날 경우따로 DB저장 처리 가능한 함수 필요
+              });
           })
           .catch((err) => {
             console.log(err);
           });
-
         message.success({
-          content: 'Congratulate to create your NFT !',
+          content: "Congratulate to create your NFT !",
           style: {
-            marginTop: '20vh',
+            marginTop: "20vh",
           },
         });
-        navigate('/');
+        navigate("/");
       };
     } else {
-      if (!image) message.error('required NFT image');
-      if (!values.name) message.error('required NFT name');
+      if (!image) message.error("required NFT image");
+      if (!values.name) message.error("required NFT name");
     }
   };
+  //// request server with NFTInfo
+  //const handleSaveNFT = () => {
+  //  if (tokenId !== 0 && metaUri !== "")
+  //    axios
+  //      .post("http://localhost:4999/nft/savenft", {
+  //        tokenId,
+  //        metaUri,
+  //        userAddress,
+  //      })
+  //      .then((res) => {
+  //        console.log(`res:${res}`);
+  //      })
+  //      .catch((err) => {
+  //        console.log(`err: ${err}`);
+  //        // 만약 NFT생성은 완료 되었는데 서버전송에서 오류날 경우따로 DB저장 처리 가능한 함수 필요
+  //      });
+  //};
 
   useEffect(() => {
     return () => {
@@ -199,7 +239,7 @@ export default function Create({ userAddress, contract, web3 }) {
               id="input-file"
               accept="img/*"
               onChange={handleImageUpload}
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
             />
           </ProfileImageWrapper>
         </Col>
@@ -233,7 +273,7 @@ export default function Create({ userAddress, contract, web3 }) {
                       Create
                     </Button>
                   ) : (
-                    <Tooltip title="Connect wallet first" color={'red'}>
+                    <Tooltip title="Connect wallet first" color={"red"}>
                       <Button
                         shape="round"
                         htmlType="submit"
