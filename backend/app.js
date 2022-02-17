@@ -12,7 +12,7 @@ const app = express();
 const {PORT, MONGO_URI} = process.env; 
 mongoose
     .connect(MONGO_URI)
-    .then(() => console.log("Sucess mongo connect"))
+    .then(() => console.log("Success mongo connect"))
     .catch(e => console.error(e))
 
 
